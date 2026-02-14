@@ -1,7 +1,20 @@
 [package]
-name = "rtsp-rust"
+name = "rtsp"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+parking_lot = "0.12.5"
+pyo3 = { version = "0.28.0", features = ["extension-module", "macros"] }
 tokio = "1.49.0"
+
+[lib]
+name = "rtsp"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "rtsp"
+path = "src/bin/main.rs"
+
+[build-dependencies]
+pyo3-build-config = "0.28"

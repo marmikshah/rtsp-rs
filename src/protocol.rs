@@ -62,6 +62,33 @@ pub fn parse_request(raw: &str) -> Result<RtspRequest, ParseError> {
     })
 }
 
+#[derive(Debug, Clone)]
+pub struct TransportHeader {
+    pub client_rtp_port: u16,
+    pub client_rtcp_port: u16,
+}
+
+pub fn parse_transport_header(header: &str) -> Option<TransportHeader> {
+    for part in header.split(';') {
+        let part = part.trim();
+        if part.starts_with("client_port=") {
+            let ports = &part["client_port=".len()..];
+            let port_parts: Vec<&str> = ports.split("-").collect();
+
+            if port_parts.len() == 2 {
+                let rtp_port: u16 = port_parts[0].parse().ok()?;
+                let rtcp_port: u16 = port_parts[1].parse().ok()?;
+
+                return Some(TransportHeader {
+                    client_rtp_port: rtp_port,
+                    client_rtcp_port: rtcp_port,
+                });
+            }
+        }
+    }
+    None
+}
+
 pub struct RtspResponse {
     pub status_code: u16,
     pub status_text: String,
@@ -115,31 +142,4 @@ impl RtspResponse {
         }
         response
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct TransportHeader {
-    pub client_rtp_port: u16,
-    pub client_rtcp_port: u16,
-}
-
-pub fn parse_transport_header(header: &str) -> Option<TransportHeader> {
-    for part in header.split(';') {
-        let part = part.trim();
-        if part.starts_with("client_port=") {
-            let ports = &part["client_port=".len()..];
-            let port_parts: Vec<&str> = ports.split('-').collect();
-
-            if port_parts.len() == 2 {
-                let rtp_port: u16 = port_parts[0].parse().ok()?;
-                let rtcp_port: u16 = port_parts[1].parse().ok()?;
-
-                return Some(TransportHeader {
-                    client_rtp_port: rtp_port,
-                    client_rtcp_port: rtcp_port,
-                });
-            }
-        }
-    }
-    None
 }

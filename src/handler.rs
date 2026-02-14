@@ -1,16 +1,17 @@
-use crate::protocol::{parse_transport_header, RtspRequest, RtspResponse};
-use crate::session::{SessionManager, Transport};
+use crate::protocol::{RtspRequest, RtspResponse, parse_transport_header};
+use crate::session::{PlaybackState, SessionManager, Transport};
+use std::net::SocketAddr;
 
 pub struct RequestHandler {
     session_manager: SessionManager,
-    next_server_port: u16,
+    client_addr: SocketAddr,
 }
 
 impl RequestHandler {
-    pub fn new() -> Self {
+    pub fn new(session_manager: SessionManager, client_addr: SocketAddr) -> Self {
         RequestHandler {
-            session_manager: SessionManager::new(),
-            next_server_port: 6000,
+            session_manager,
+            client_addr,
         }
     }
 
@@ -70,22 +71,21 @@ impl RequestHandler {
             }
         };
 
-        let server_rtp_port = self.next_server_port;
-        let server_rtcp_port = self.next_server_port + 1;
-        self.next_server_port += 2;
+        let (server_rtp_port, server_rtcp_port) = self.session_manager.allocate_server_ports();
 
         let session = self.session_manager.create_session(&request.uri);
 
         let session_id = session.id.clone();
+        let client_rtp_addr =
+            SocketAddr::new(self.client_addr.ip(), client_transport.client_rtp_port);
 
-        if let Some(session) = self.session_manager.get_session_mut(&session_id) {
-            session.transport = Some(Transport {
-                client_rtp_port: client_transport.client_rtp_port,
-                client_rtcp_port: client_transport.client_rtcp_port,
-                server_rtp_port,
-                server_rtcp_port,
-            });
-        }
+        session.set_transport(Transport {
+            client_rtp_port: client_transport.client_rtp_port,
+            client_rtcp_port: client_transport.client_rtcp_port,
+            server_rtp_port,
+            server_rtcp_port,
+            client_addr: client_rtp_addr,
+        });
 
         let transport_response = format!(
             "RTP/AVP;unicast;client_port={}-{};server_port={}-{}",
@@ -109,9 +109,9 @@ impl RequestHandler {
             }
         };
 
-        match self.session_manager.get_session_mut(session_id) {
+        match self.session_manager.get_session(session_id) {
             Some(session) => {
-                session.is_playing = true;
+                session.set_state(PlaybackState::Playing);
                 println!("Session {} started playing", session_id);
                 RtspResponse::ok()
                     .add_header("CSeq", cseq)
@@ -130,9 +130,9 @@ impl RequestHandler {
             }
         };
 
-        match self.session_manager.get_session_mut(session_id) {
+        match self.session_manager.get_session(session_id) {
             Some(session) => {
-                session.is_playing = false;
+                session.set_state(PlaybackState::Paused);
                 println!("Session {} paused", session_id);
 
                 RtspResponse::ok()
