@@ -1,19 +1,8 @@
-[package]
-name = "rtsp"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-parking_lot = "0.12.5"
-pyo3 = { version = "0.28.0", features = ["extension-module", "macros"] }
-
-[lib]
-name = "rtsp"
-crate-type = ["cdylib", "rlib"]
-
-[[bin]]
-name = "rtsp"
-path = "src/bin/main.rs"
-
-[build-dependencies]
-pyo3-build-config = "0.28"
+[workspace]
+resolver = "3"
+members = [
+    "crates/core",
+    "crates/python",
+    "crates/gst",
+    "crates/cli",
+]

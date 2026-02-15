@@ -1,0 +1,10 @@
+[package]
+name = "rtsp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+parking_lot = "0.12.5"
+thiserror = "2"
+tracing = "0.1"
+rand = "0.9"

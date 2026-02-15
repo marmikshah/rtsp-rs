@@ -1,0 +1,14 @@
+[package]
+name = "gst-rtsp-sink"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "gstrtspserversink"
+crate-type = ["cdylib"]
+
+[dependencies]
+rtsp = { path = "../core" }
+parking_lot = "0.12.5"
+gst = { package = "gstreamer", version = "0.23" }
+gst-base = { package = "gstreamer-base", version = "0.23" }
