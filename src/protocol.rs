@@ -131,14 +131,14 @@ impl RtspResponse {
 
         for (name, value) in &self.headers {
             response.push_str(&format!("{}: {}\r\n", name, value));
+        }
 
-            if let Some(body) = &self.body {
-                response.push_str(&format!("Content-Length: {}\r\n", body.len()));
-                response.push_str("\r\n");
-                response.push_str(body);
-            } else {
-                response.push_str("\r\n");
-            }
+        if let Some(body) = &self.body {
+            response.push_str(&format!("Content-Length: {}\r\n", body.len()));
+            response.push_str("\r\n");
+            response.push_str(body);
+        } else {
+            response.push_str("\r\n");
         }
         response
     }
