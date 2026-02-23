@@ -67,6 +67,22 @@ impl MethodHandler {
             )
     }
 
+    /// Parses host from an RTSP URI (e.g. rtsp://host:8554/path -> host). Falls back to client IP if invalid.
+    fn host_from_uri_or_client(&self, uri: &str) -> String {
+        if let Some(after_scheme) = uri.strip_prefix("rtsp://").or_else(|| uri.strip_prefix("rtsps://")) {
+            let host = after_scheme
+                .split('/')
+                .next()
+                .and_then(|host_port| host_port.split(':').next())
+                .unwrap_or("")
+                .trim();
+            if !host.is_empty() {
+                return host.to_string();
+            }
+        }
+        self.client_addr.ip().to_string()
+    }
+
     fn handle_describe(&self, cseq: &str, uri: &str) -> RtspResponse {
         tracing::debug!(%cseq, uri, "DESCRIBE");
 
@@ -75,9 +91,17 @@ impl MethodHandler {
             return RtspResponse::not_found().add_header("CSeq", cseq);
         }
 
+        let host = self.host_from_uri_or_client(uri);
         let sdp = {
             let guard = self.packetizer.lock();
-            sdp::generate_sdp(&**guard)
+            sdp::generate_sdp(
+                &**guard,
+                &host,
+                "0",
+                "0",
+                "-",
+                "Stream",
+            )
         };
 
         RtspResponse::ok()

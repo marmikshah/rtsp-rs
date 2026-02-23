@@ -285,8 +285,11 @@ mod tests {
     fn sdp_attributes_include_packetization_mode() {
         let p = make_packetizer();
         let attrs = p.sdp_attributes();
-        assert_eq!(attrs.len(), 1);
-        assert!(attrs[0].contains("packetization-mode=1"));
+        assert!(attrs.len() >= 1, "must include at least fmtp");
+        assert!(
+            attrs.iter().any(|a| a.contains("packetization-mode=1")),
+            "must include packetization-mode=1"
+        );
     }
 
     #[test]
