@@ -1,30 +1,45 @@
+use std::{fmt::format, net::Ipv4Addr};
+
 use crate::media::Packetizer;
+
+
 
 /// Generate an SDP session description for the given packetizer.
 ///
-/// Produces SDP per RFC 4566 with media-level attributes from the codec's
+/// Produces RFC 8866 compliant SDP with tolerance for RFC 4566
 /// [`Packetizer::sdp_attributes`] implementation.
-pub fn generate_sdp(packetizer: &dyn Packetizer) -> String {
+pub fn generate_sdp(packetizer: &dyn Packetizer, ip: &str, session_id: &str, session_version: &str, username: &str, session_name: &str) -> String {
     let pt = packetizer.payload_type();
     let clock = packetizer.clock_rate();
     let codec = packetizer.codec_name();
 
-    let mut sdp = format!(
-        "v=0\r\n\
-         o=- 0 0 IN IP4 127.0.0.1\r\n\
-         s=RTSP Server\r\n\
-         c=IN IP4 0.0.0.0\r\n\
-         t=0 0\r\n\
-         m=video 0 RTP/AVP {pt}\r\n\
-         a=rtpmap:{pt} {codec}/{clock}\r\n"
-    );
+    let mut sdp: Vec<String> = Vec::new();
+    // 1. v= (Protocol Version)
+    sdp.push("v=0".to_string());
 
-    for attr in packetizer.sdp_attributes() {
-        sdp.push_str(&format!("a={attr}\r\n"));
-    }
+    // 2. o= (Origin)
+    sdp.push(format!("o={} {} {} IN IP4 {}", username, session_id, session_version, ip));
 
-    sdp.push_str("a=control:track1\r\n");
-    sdp
+    // 3. s= (Session Name)
+    sdp.push(format!("s={}", session_name));
+
+    // 4. c= (Connnection Data - placed at session level for RTSP)
+    sdp.push("c=IN IP4 0.0.0.0".to_string());
+
+    // 5. t= (Timing - 0 0 means a live, continuous stream)
+    sdp.push("t=0 0".to_string());
+
+    //6. a= (Session Attributes)
+    sdp.extend_from_slice(&packetizer.sdp_attributes()[0..]);
+
+    // 7. m= (Media Description)
+    // TODO: Add Audio Support
+    sdp.push(format!("m=video 0 RTP/AVP {}", &packetizer.payload_type()));
+
+    // Final has to be a \r\n
+    sdp.push("\r\n".to_string());
+
+    sdp.join("\r\n")
 }
 
 #[cfg(test)]

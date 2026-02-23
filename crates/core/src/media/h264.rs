@@ -167,7 +167,16 @@ impl Packetizer for H264Packetizer {
     }
 
     fn sdp_attributes(&self) -> Vec<String> {
-        vec![format!("fmtp:{} packetization-mode=1", self.header.pt)]
+        vec![
+            format!("a=fmtp:{} packetization-mode=1", self.header.pt),
+            format!(
+                "a=rtpmap: {}, {}, {}",
+                self.payload_type(),
+                self.codec_name(),
+                self.clock_rate()
+            ),
+            "a=control:track1".to_string(),
+        ]
     }
 }
 
