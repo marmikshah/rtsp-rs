@@ -10,6 +10,7 @@ use parking_lot::Mutex;
 use crate::media::Packetizer;
 use crate::protocol::MethodHandler;
 use crate::protocol::RtspRequest;
+use crate::server::ServerConfig;
 use crate::session::SessionManager;
 
 /// Non-blocking TCP accept loop.
@@ -20,6 +21,7 @@ pub fn accept_loop(
     listener: TcpListener,
     session_manager: SessionManager,
     packetizer: Arc<Mutex<Box<dyn Packetizer>>>,
+    config: Arc<ServerConfig>,
     running: Arc<AtomicBool>,
 ) {
     while running.load(Ordering::SeqCst) {
@@ -31,8 +33,9 @@ pub fn accept_loop(
                 let sm = session_manager.clone();
                 let r = running.clone();
                 let p = packetizer.clone();
+                let c = config.clone();
                 thread::spawn(move || {
-                    Connection::handle(stream, sm, p, r);
+                    Connection::handle(stream, sm, p, c, r);
                 });
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -62,6 +65,7 @@ impl Connection {
         stream: TcpStream,
         session_manager: SessionManager,
         packetizer: Arc<Mutex<Box<dyn Packetizer>>>,
+        config: Arc<ServerConfig>,
         running: Arc<AtomicBool>,
     ) {
         let peer_addr = match stream.peer_addr() {
@@ -76,7 +80,7 @@ impl Connection {
             Err(_) => return,
         };
 
-        let handler = MethodHandler::new(session_manager.clone(), peer_addr, packetizer);
+        let handler = MethodHandler::new(session_manager.clone(), peer_addr, packetizer, config);
 
         let mut conn = Connection {
             reader: BufReader::new(reader_stream),

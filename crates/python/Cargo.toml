@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "rtsp_python"
+name = "rtsp"
 crate-type = ["cdylib"]
 
 [dependencies]

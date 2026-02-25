@@ -141,7 +141,7 @@ def main():
     FPS = 30
 
     # Create server
-    server = rtsp.Server("0.0.0.0:8554")
+    server = rtsp.Server("0.0.0.0:8554", public_host="localhost", public_port=8554)
     server.start()
 
     print("=" * 60)

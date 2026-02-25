@@ -2,6 +2,7 @@ use crate::protocol::request::RtspRequest;
 use crate::protocol::response::RtspResponse;
 use crate::protocol::sdp;
 use crate::media::Packetizer;
+use crate::server::ServerConfig;
 use crate::session::{SessionManager, SessionState, Transport};
 use crate::session::transport::TransportHeader;
 use std::net::SocketAddr;
@@ -16,6 +17,7 @@ pub struct MethodHandler {
     session_manager: SessionManager,
     client_addr: SocketAddr,
     packetizer: Arc<Mutex<Box<dyn Packetizer>>>,
+    config: Arc<ServerConfig>,
     /// Session IDs created during this connection, for cleanup on disconnect.
     session_ids: Vec<String>,
 }
@@ -25,11 +27,13 @@ impl MethodHandler {
         session_manager: SessionManager,
         client_addr: SocketAddr,
         packetizer: Arc<Mutex<Box<dyn Packetizer>>>,
+        config: Arc<ServerConfig>,
     ) -> Self {
         MethodHandler {
             session_manager,
             client_addr,
             packetizer,
+            config,
             session_ids: Vec::new(),
         }
     }
@@ -69,6 +73,10 @@ impl MethodHandler {
 
     /// Parses host from an RTSP URI (e.g. rtsp://host:8554/path -> host). Falls back to client IP if invalid.
     fn host_from_uri_or_client(&self, uri: &str) -> String {
+        if let Some(host) = &self.config.public_host {
+            return host.clone();
+        }
+
         if let Some(after_scheme) = uri.strip_prefix("rtsp://").or_else(|| uri.strip_prefix("rtsps://")) {
             let host = after_scheme
                 .split('/')
@@ -97,10 +105,10 @@ impl MethodHandler {
             sdp::generate_sdp(
                 &**guard,
                 &host,
-                "0",
-                "0",
-                "-",
-                "Stream",
+                &self.config.sdp_session_id,
+                &self.config.sdp_session_version,
+                &self.config.sdp_username,
+                &self.config.sdp_session_name,
             )
         };
 

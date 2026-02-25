@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use std::sync::Arc;
 
 use crate::types::PyViewer;
-use rtsp::Server;
+use rtsp::{Server, ServerConfig};
 
 #[pyclass(name = "Server")]
 pub struct PyServer {
@@ -23,10 +23,26 @@ impl PyServer {
 #[pymethods]
 impl PyServer {
     #[new]
-    #[pyo3(signature = (bind_addr = "0.0.0.0:8554"))]
-    fn new(bind_addr: &str) -> Self {
+    #[pyo3(signature = (
+        bind_addr = "0.0.0.0:8554",
+        public_host = None,
+        public_port = None,
+        session_name = "Stream",
+    ))]
+    fn new(
+        bind_addr: &str,
+        public_host: Option<&str>,
+        public_port: Option<u16>,
+        session_name: &str,
+    ) -> Self {
+        let config = ServerConfig {
+            public_host: public_host.map(std::string::ToString::to_string),
+            public_port,
+            sdp_session_name: session_name.to_string(),
+            ..ServerConfig::default()
+        };
         PyServer {
-            inner: Arc::new(Mutex::new(Server::new(bind_addr))),
+            inner: Arc::new(Mutex::new(Server::with_config(bind_addr, config))),
         }
     }
 

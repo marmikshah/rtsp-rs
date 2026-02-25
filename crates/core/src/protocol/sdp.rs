@@ -30,19 +30,17 @@ pub fn generate_sdp(
     // 5. t= (Timing - 0 0 means a live, continuous stream)
     sdp.push("t=0 0".to_string());
 
-    //6. a= (Session Attributes)
-    sdp.extend_from_slice(&packetizer.sdp_attributes()[0..]);
-
-    // 7. m= (Media Description)
+    // 6. m= (Media Description)
     // TODO: Add Audio Support
     sdp.push(format!("m=video 0 RTP/AVP {}", &packetizer.payload_type()));
 
+    // 7. a= (Media Attributes)
+    sdp.extend_from_slice(&packetizer.sdp_attributes()[0..]);
+
     tracing::debug!("SDP: {}", sdp.join("\r\n"));
 
-    // Final has to be a \r\n
-    sdp.push("\r\n".to_string());
-
-    sdp.join("\r\n")
+    // SDP body must end with CRLF for RTSP response bodies.
+    format!("{}\r\n", sdp.join("\r\n"))
 }
 
 #[cfg(test)]
@@ -65,10 +63,13 @@ mod tests {
         assert!(sdp.contains("o=server 1234567890 1 IN IP4 192.168.1.100\r\n"));
         assert!(sdp.contains("s=Test Session\r\n"));
         assert!(sdp.contains("c=IN IP4 192.168.1.100\r\n"), "c= must use configured IP, not 0.0.0.0");
-        // Attributes come from packetizer (H264 uses "a=rtpmap: pt, codec, clock" format)
-        assert!(sdp.contains("a=rtpmap:"), "SDP must include rtpmap from packetizer");
-        assert!(sdp.contains("H264"), "SDP must include codec name");
+        // Attributes come from packetizer and must be RFC 6184 / RTP map format.
+        assert!(sdp.contains("a=rtpmap:96 H264/90000\r\n"), "SDP must include valid rtpmap");
         assert!(sdp.contains("a=fmtp:96 packetization-mode=1\r\n"));
         assert!(sdp.contains("a=control:track1\r\n"));
+        let m_idx = sdp.find("m=video").expect("SDP must include media section");
+        let a_idx = sdp.find("a=fmtp").expect("SDP must include fmtp attribute");
+        assert!(a_idx > m_idx, "media attributes must follow m=video");
+        assert!(sdp.ends_with("\r\n"), "SDP must end with CRLF");
     }
 }

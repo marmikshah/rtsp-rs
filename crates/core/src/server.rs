@@ -12,6 +12,37 @@ use crate::session::SessionManager;
 use crate::transport::UdpTransport;
 use crate::transport::tcp;
 
+/// Server-level configuration used by protocol handlers.
+#[derive(Debug, Clone)]
+pub struct ServerConfig {
+    /// Public host advertised in SDP `o=` and `c=` lines.
+    /// When `None`, host is inferred from request URI/client address.
+    pub public_host: Option<String>,
+    /// Public RTSP port for future URL-based headers (e.g. RTP-Info).
+    pub public_port: Option<u16>,
+    /// SDP origin username field (`o=<username> ...`).
+    pub sdp_username: String,
+    /// SDP origin session id field (`o=... <session-id> ...`).
+    pub sdp_session_id: String,
+    /// SDP origin session version field (`o=... ... <session-version> ...`).
+    pub sdp_session_version: String,
+    /// SDP session name (`s=`).
+    pub sdp_session_name: String,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            public_host: None,
+            public_port: None,
+            sdp_username: "-".to_string(),
+            sdp_session_id: "0".to_string(),
+            sdp_session_version: "0".to_string(),
+            sdp_session_name: "Stream".to_string(),
+        }
+    }
+}
+
 /// High-level RTSP server orchestrator.
 ///
 /// Owns the session manager, transport layer, and a default packetizer.
@@ -23,27 +54,44 @@ pub struct Server {
     bind_addr: String,
     udp: Option<UdpTransport>,
     packetizer: Arc<Mutex<Box<dyn Packetizer>>>,
+    config: Arc<ServerConfig>,
 }
 
 impl Server {
     pub fn new(bind_addr: &str) -> Self {
+        Self::with_config(bind_addr, ServerConfig::default())
+    }
+
+    /// Create a server with custom protocol/SDP configuration.
+    pub fn with_config(bind_addr: &str, config: ServerConfig) -> Self {
         Self {
             session_manager: SessionManager::new(),
             running: Arc::new(AtomicBool::new(false)),
             bind_addr: bind_addr.to_string(),
             udp: None,
             packetizer: Arc::new(Mutex::new(Box::new(H264Packetizer::with_random_ssrc(96)))),
+            config: Arc::new(config),
         }
     }
 
     /// Create a server with a custom packetizer (for H.265, etc. in the future).
     pub fn with_packetizer(bind_addr: &str, packetizer: Box<dyn Packetizer>) -> Self {
+        Self::with_packetizer_and_config(bind_addr, packetizer, ServerConfig::default())
+    }
+
+    /// Create a server with a custom packetizer and protocol/SDP configuration.
+    pub fn with_packetizer_and_config(
+        bind_addr: &str,
+        packetizer: Box<dyn Packetizer>,
+        config: ServerConfig,
+    ) -> Self {
         Self {
             session_manager: SessionManager::new(),
             running: Arc::new(AtomicBool::new(false)),
             bind_addr: bind_addr.to_string(),
             udp: None,
             packetizer: Arc::new(Mutex::new(packetizer)),
+            config: Arc::new(config),
         }
     }
 
@@ -62,11 +110,12 @@ impl Server {
         let running = self.running.clone();
         let session_manager = self.session_manager.clone();
         let packetizer = self.packetizer.clone();
+        let config = self.config.clone();
 
         tracing::info!(addr = %self.bind_addr, "RTSP server listening");
 
         thread::spawn(move || {
-            tcp::accept_loop(listener, session_manager, packetizer, running);
+            tcp::accept_loop(listener, session_manager, packetizer, config, running);
         });
 
         Ok(())
@@ -116,6 +165,11 @@ impl Server {
     /// frames through the same instance the RTSP handler uses for SDP generation.
     pub fn packetizer(&self) -> Arc<Mutex<Box<dyn Packetizer>>> {
         self.packetizer.clone()
+    }
+
+    /// Returns the server's protocol configuration.
+    pub fn config(&self) -> Arc<ServerConfig> {
+        self.config.clone()
     }
 }
 

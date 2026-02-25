@@ -7,4 +7,4 @@ pub mod transport;
 
 pub use error::{Result, RtspError};
 pub use media::Packetizer;
-pub use server::{Server, Viewer};
+pub use server::{Server, ServerConfig, Viewer};
