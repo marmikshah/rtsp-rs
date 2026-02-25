@@ -27,4 +27,10 @@ pub trait Packetizer: Send {
     /// SDP media-level attributes for this codec (without "a=" prefix).
     /// Example: `vec!["fmtp:96 packetization-mode=1"]`
     fn sdp_attributes(&self) -> Vec<String>;
+
+    /// Next RTP sequence number.
+    fn next_sequence(&self) -> u16;
+
+    /// Next RTP timestamp.
+    fn next_rtp_timestamp(&self) -> u32;
 }

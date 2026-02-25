@@ -195,10 +195,15 @@ impl MethodHandler {
             Some(session) => {
                 session.set_state(SessionState::Playing);
                 tracing::info!(session_id, "session started playing");
+                let packetizer = self.packetizer.lock();
+                let next_sequence = packetizer.next_sequence();
+                let next_rtp_timestamp = packetizer.next_rtp_timestamp();
+                let rtp_info = format!("url={};seq={};rtptime={}", session.uri, next_sequence, next_rtp_timestamp);
                 RtspResponse::ok()
                     .add_header("CSeq", cseq)
                     .add_header("Session", &session.session_header_value())
                     .add_header("Range", "npt=0.000-")
+                    .add_header("RTP-Info", &rtp_info)
             }
             None => {
                 tracing::warn!(session_id, "PLAY for unknown session");

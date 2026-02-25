@@ -173,6 +173,14 @@ impl Packetizer for H264Packetizer {
             "a=control:track1".to_string(),
         ]
     }
+
+    fn next_sequence(&self) -> u16 {
+        self.header.sequence()
+    }
+
+    fn next_rtp_timestamp(&self) -> u32 {
+        self.header.timestamp() as u32
+    }
 }
 
 #[cfg(test)]
