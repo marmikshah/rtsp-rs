@@ -1,4 +1,4 @@
-use base64::prelude::{Engine as _, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine as _};
 
 use super::Packetizer;
 use super::rtp::RtpHeader;
@@ -85,10 +85,7 @@ impl H264Packetizer {
         if sps.len() < 4 {
             return Err("SPS too short for profile-level-id".into());
         }
-        Ok(format!(
-            "{:02x}{:02x}{:02x}",
-            sps[1], sps[2], sps[3]
-        ))
+        Ok(format!("{:02x}{:02x}{:02x}", sps[1], sps[2], sps[3]))
     }
 
     fn get_sprop_parameter_sets(&self) -> Result<String, String> {
@@ -224,7 +221,7 @@ impl Packetizer for H264Packetizer {
         // Only set when not already provided by the user.
         if self.sps.is_none() || self.pps.is_none() {
             for nal in &nal_units {
-                if nal.len() < 1 {
+                if nal.is_empty() {
                     continue;
                 }
                 let nal_type = nal[0] & 0x1f;
@@ -445,7 +442,10 @@ mod tests {
         .concat();
         p.packetize(&frame, 3000);
         let attrs = p.sdp_attributes();
-        let fmtp = attrs.iter().find(|a| a.starts_with("a=fmtp:")).expect("fmtp line");
+        let fmtp = attrs
+            .iter()
+            .find(|a| a.starts_with("a=fmtp:"))
+            .expect("fmtp line");
         assert!(
             fmtp.contains("profile-level-id="),
             "SPS auto-captured, profile-level-id in SDP"
@@ -455,5 +455,4 @@ mod tests {
             "SPS/PPS auto-captured, sprop-parameter-sets in SDP"
         );
     }
-
 }
