@@ -161,13 +161,12 @@ impl Server {
             return Err(RtspError::AlreadyRunning);
         }
 
-        let addr: SocketAddr = self
-            .bind_addr
-            .parse()
-            .map_err(|_| RtspError::InvalidBindAddress(format!(
+        let addr: SocketAddr = self.bind_addr.parse().map_err(|_| {
+            RtspError::InvalidBindAddress(format!(
                 "expected host:port with explicit port, got {:?}",
                 self.bind_addr
-            )))?;
+            ))
+        })?;
         if addr.port() == 0 {
             return Err(RtspError::InvalidBindAddress(
                 "port must be explicit (non-zero)".to_string(),

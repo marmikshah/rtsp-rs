@@ -52,8 +52,8 @@ fn full_handshake_options_describe_setup_play() {
     server.start().expect("server start");
 
     let addr = TEST_BIND.to_socket_addrs().unwrap().next().unwrap();
-    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))
-        .expect("connect to server");
+    let mut stream =
+        TcpStream::connect_timeout(&addr, Duration::from_secs(2)).expect("connect to server");
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();
@@ -64,10 +64,7 @@ fn full_handshake_options_describe_setup_play() {
     let base_uri = "rtsp://127.0.0.1:18554/stream".to_string();
 
     // OPTIONS
-    let opt_req = format!(
-        "OPTIONS {} RTSP/1.0\r\nCSeq: 1\r\n\r\n",
-        base_uri
-    );
+    let opt_req = format!("OPTIONS {} RTSP/1.0\r\nCSeq: 1\r\n\r\n", base_uri);
     let opt_resp = rtsp_request(&mut stream, &opt_req).expect("OPTIONS response");
     assert!(
         opt_resp.starts_with("RTSP/1.0 200 OK"),
@@ -94,10 +91,7 @@ fn full_handshake_options_describe_setup_play() {
         desc_resp.contains("Content-Type: application/sdp"),
         "DESCRIBE: missing Content-Type application/sdp"
     );
-    assert!(
-        desc_resp.contains("v=0"),
-        "DESCRIBE: SDP body missing v=0"
-    );
+    assert!(desc_resp.contains("v=0"), "DESCRIBE: SDP body missing v=0");
     assert!(
         desc_resp.contains("m=video"),
         "DESCRIBE: SDP body missing m=video"
