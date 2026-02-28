@@ -11,7 +11,7 @@ use crate::protocol::RtspRequest;
 use crate::server::ServerConfig;
 use crate::session::SessionManager;
 
-/// Non-blocking TCP accept loop.
+/// Non-blocking TCP accept loop for RTSP connections.
 ///
 /// Checks the `running` flag between accepts with a 50ms poll interval
 /// so that [`crate::server::Server::stop`] can terminate it promptly.

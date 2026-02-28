@@ -136,6 +136,17 @@ impl MethodHandler {
             }
         };
 
+        // Only RTP/AVP (UDP) is implemented. TCP interleaved (RTP/AVP/TCP;interleaved=0-1) is not (RFC 2326 §10.12).
+        if transport_header.contains("RTP/AVP/TCP") || transport_header.contains("interleaved=") {
+            tracing::warn!(%cseq, transport = %transport_header, "client requested TCP transport (not implemented)");
+            return RtspResponse::new(461, "Unsupported Transport")
+                .add_header("CSeq", cseq)
+                .add_header(
+                    "Unsupported",
+                    "RTP/AVP/TCP (interleaved) not supported; use RTP/AVP (UDP), e.g. ffplay -rtsp_transport udp <url>",
+                );
+        }
+
         let client_transport = match TransportHeader::parse(transport_header) {
             Some(t) => t,
             None => {
