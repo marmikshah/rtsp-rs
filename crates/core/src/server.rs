@@ -85,6 +85,25 @@ impl Server {
         Self::with_config(bind_addr, ServerConfig::default())
     }
 
+    /// Create a server with a single H.264 mount at the given path.
+    ///
+    /// Use this when the stream path is configurable (e.g. GStreamer `mount-path` property).
+    /// `bind_addr` must be `host:port` with an explicit non-zero port.
+    pub fn new_with_mount_path(bind_addr: &str, mount_path: &str) -> Self {
+        let mounts = MountRegistry::new();
+        mounts.add(mount_path, Box::new(H264Packetizer::with_random_ssrc(96)));
+        mounts.set_default(mount_path);
+
+        Self {
+            session_manager: SessionManager::new(),
+            mounts,
+            running: Arc::new(AtomicBool::new(false)),
+            bind_addr: bind_addr.to_string(),
+            udp: None,
+            config: Arc::new(ServerConfig::default()),
+        }
+    }
+
     /// Create a server with custom protocol/SDP configuration.
     /// A default H.264 mount at `/stream` is created automatically.
     pub fn with_config(bind_addr: &str, config: ServerConfig) -> Self {
