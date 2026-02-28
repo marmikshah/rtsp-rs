@@ -56,6 +56,6 @@ gstreamer::plugin_define!(
     "MIT",
     "gst-rtsp-sink",
     "rtsp",
-    "https://github.com/marmikshah/rtsp",
+    "https://github.com/marmikshah/rtsp-rs",
     "2026-02-21"
 );

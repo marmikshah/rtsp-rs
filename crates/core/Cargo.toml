@@ -1,5 +1,5 @@
 [package]
-name = "rtsp"
+name = "rtsp-rs"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.92"
@@ -10,6 +10,9 @@ repository = "https://github.com/marmikshah/rtsp-rs"
 homepage = "https://github.com/marmikshah/rtsp-rs"
 keywords = ["rtsp", "rtp", "streaming", "video", "server"]
 categories = ["multimedia", "network-programming"]
+
+[lib]
+name = "rtsp"
 
 [dependencies]
 base64 = "0.22"

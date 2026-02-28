@@ -16,7 +16,7 @@ name = "gstrtspserversink"
 crate-type = ["cdylib"]
 
 [dependencies]
-rtsp = { path = "../core" }
+rtsp = { path = "../core", package = "rtsp-rs" }
 parking_lot = "0.12"
 gstreamer = "0.25"
 gstreamer-base = "0.25"

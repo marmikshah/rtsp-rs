@@ -16,7 +16,7 @@ name = "rtsp"
 crate-type = ["cdylib"]
 
 [dependencies]
-rtsp = { path = "../core" }
+rtsp = { path = "../core", package = "rtsp-rs" }
 parking_lot = "0.12"
 pyo3 = { version = "0.28", features = ["extension-module", "macros"] }
 

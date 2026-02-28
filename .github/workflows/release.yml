@@ -84,16 +84,16 @@ jobs:
           sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/python/Cargo.toml
           sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/gst/Cargo.toml
           sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/python/pyproject.toml
-          # Use crates.io dependency for publish (path is only for local dev)
-          sed -i 's|rtsp = { path = "../core" }|rtsp = "'"$VERSION"'"|' crates/python/Cargo.toml
-          sed -i 's|rtsp = { path = "../core" }|rtsp = "'"$VERSION"'"|' crates/gst/Cargo.toml
+          # Use crates.io dependency for publish (path is only for local dev). Core crate is rtsp-rs on crates.io.
+          sed -i 's|rtsp = { path = "../core", package = "rtsp-rs" }|rtsp = { package = "rtsp-rs", version = "'"$VERSION"'" }|' crates/python/Cargo.toml
+          sed -i 's|rtsp = { path = "../core", package = "rtsp-rs" }|rtsp = { package = "rtsp-rs", version = "'"$VERSION"'" }|' crates/gst/Cargo.toml
           echo "Publishing version: $VERSION"
 
       - name: Cargo login (crates.io)
         run: echo "${{ secrets.CRATES_API_KEY }}" | cargo login
 
-      - name: Publish rtsp (core)
-        run: cargo publish -p rtsp --allow-dirty
+      - name: Publish rtsp-rs (core)
+        run: cargo publish -p rtsp-rs --allow-dirty
 
       - name: Wait for crates.io index
         run: sleep 10
@@ -138,8 +138,9 @@ jobs:
           done
           ls -la release-assets/
 
+      # Pin to v2.4.2 to avoid finalization retry loop in v2.5.x (see softprops/action-gh-release#704)
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.4.2
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
