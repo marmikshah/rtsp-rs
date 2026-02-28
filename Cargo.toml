@@ -4,5 +4,4 @@ members = [
     "crates/core",
     "crates/python",
     "crates/gst",
-    "crates/cli",
 ]

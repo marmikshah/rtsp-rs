@@ -2,7 +2,7 @@
 
 A Rust library for publishing live encoded video over RTSP. Push frames and play the stream with any standard client (VLC, ffplay, GStreamer).
 
-Usable from **Rust**, **Python**, **GStreamer**, or as a **standalone CLI**.
+Usable from **Rust**, **Python**, or **GStreamer**.
 
 ---
 
@@ -26,8 +26,7 @@ Some of the tests, examples, and documentation in this repo were generated or as
 crates/
 ├── core/        # rtsp         — core library
 ├── python/      # rtsp-python  — PyO3 bindings
-├── gst/         # gst-rtsp-sink — GStreamer sink plugin
-└── cli/         # rtsp-cli     — standalone server binary
+└── gst/         # gst-rtsp-sink — GStreamer sink plugin
 
 examples/
 └── python/      # Python demo (numpy + PyAV)
@@ -124,12 +123,6 @@ ffplay rtsp://localhost:8554/stream
 vlc rtsp://localhost:8554/stream
 ```
 
-### CLI
-
-```bash
-cargo run -p rtsp-cli -- --bind 0.0.0.0:8554
-```
-
 ## Building
 
 Requires Rust 1.85+. The GStreamer plugin requires `libgstreamer1.0-dev`.
@@ -138,7 +131,6 @@ Requires Rust 1.85+. The GStreamer plugin requires `libgstreamer1.0-dev`.
 cargo build -p rtsp                # Core library
 cargo build -p gst-rtsp-sink       # GStreamer plugin
 cargo build -p rtsp-python         # Python bindings (needs maturin)
-cargo build -p rtsp-cli            # CLI binary
 cargo test  --workspace            # All tests
 cargo clippy --workspace           # Lint
 ```
