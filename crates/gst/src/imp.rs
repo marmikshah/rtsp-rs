@@ -197,7 +197,10 @@ impl BaseSinkImpl for RtspServerSink {
         Ok(())
     }
 
-    fn render(&self, buffer: &gstreamer::Buffer) -> Result<gstreamer::FlowSuccess, gstreamer::FlowError> {
+    fn render(
+        &self,
+        buffer: &gstreamer::Buffer,
+    ) -> Result<gstreamer::FlowSuccess, gstreamer::FlowError> {
         let map = buffer.map_readable().map_err(|_| {
             gstreamer::error!(CAT, imp = self, "Failed to map buffer readable");
             gstreamer::FlowError::Error
