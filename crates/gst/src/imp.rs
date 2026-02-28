@@ -17,11 +17,13 @@ static CAT: LazyLock<gst::DebugCategory> = LazyLock::new(|| {
 
 const DEFAULT_ADDRESS: &str = "0.0.0.0";
 const DEFAULT_PORT: u32 = 8554;
+const DEFAULT_MOUNT_PATH: &str = "/stream";
 
 #[derive(Debug, Clone)]
 struct Settings {
     address: String,
     port: u32,
+    mount_path: String,
 }
 
 impl Default for Settings {
@@ -29,12 +31,14 @@ impl Default for Settings {
         Self {
             address: DEFAULT_ADDRESS.to_string(),
             port: DEFAULT_PORT,
+            mount_path: DEFAULT_MOUNT_PATH.to_string(),
         }
     }
 }
 
 struct State {
     server: Server,
+    mount_path: String,
 }
 
 pub struct RtspServerSink {
@@ -75,6 +79,11 @@ impl ObjectImpl for RtspServerSink {
                     .maximum(65535)
                     .default_value(DEFAULT_PORT)
                     .build(),
+                glib::ParamSpecString::builder("mount-path")
+                    .nick("Mount Path")
+                    .blurb("RTSP stream path (e.g. /stream or /cam1)")
+                    .default_value(Some(DEFAULT_MOUNT_PATH))
+                    .build(),
             ]
         })
     }
@@ -83,10 +92,19 @@ impl ObjectImpl for RtspServerSink {
         let mut settings = self.settings.lock().unwrap();
         match pspec.name() {
             "address" => {
-                settings.address = value.get::<String>().expect("type checked upstream");
+                if let Ok(s) = value.get::<String>() {
+                    settings.address = s;
+                }
             }
             "port" => {
-                settings.port = value.get::<u32>().expect("type checked upstream");
+                if let Ok(p) = value.get::<u32>() {
+                    settings.port = p;
+                }
+            }
+            "mount-path" => {
+                if let Ok(s) = value.get::<String>() {
+                    settings.mount_path = s;
+                }
             }
             _ => unimplemented!(),
         }
@@ -97,6 +115,7 @@ impl ObjectImpl for RtspServerSink {
         match pspec.name() {
             "address" => settings.address.to_value(),
             "port" => settings.port.to_value(),
+            "mount-path" => settings.mount_path.to_value(),
             _ => unimplemented!(),
         }
     }
@@ -144,7 +163,7 @@ impl BaseSinkImpl for RtspServerSink {
         let settings = self.settings.lock().unwrap().clone();
         let bind_addr = format!("{}:{}", settings.address, settings.port);
 
-        let mut server = Server::new(&bind_addr);
+        let mut server = Server::new_with_mount_path(&bind_addr, &settings.mount_path);
 
         server.start().map_err(|e| {
             gst::error_msg!(
@@ -153,9 +172,19 @@ impl BaseSinkImpl for RtspServerSink {
             )
         })?;
 
-        *self.state.lock().unwrap() = Some(State { server });
+        let mount_path = settings.mount_path.clone();
+        *self.state.lock().unwrap() = Some(State {
+            server,
+            mount_path: mount_path.clone(),
+        });
 
-        gst::info!(CAT, imp = self, "RTSP server started on {}", bind_addr);
+        gst::info!(
+            CAT,
+            imp = self,
+            "RTSP server started on {} mount {}",
+            bind_addr,
+            mount_path
+        );
 
         Ok(())
     }
@@ -185,7 +214,10 @@ impl BaseSinkImpl for RtspServerSink {
             gst::FlowError::Error
         })?;
 
-        if let Err(e) = state.server.send_frame(map.as_slice(), ts_increment) {
+        if let Err(e) = state
+            .server
+            .send_frame_to(&state.mount_path, map.as_slice(), ts_increment)
+        {
             gst::warning!(CAT, imp = self, "send_frame failed: {}", e);
         }
 
