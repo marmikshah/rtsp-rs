@@ -85,7 +85,7 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: maturin publish -m crates/python/Cargo.toml --no-interaction
+        run: maturin publish -m crates/python/Cargo.toml --non-interactive
 
   # Create GitHub Release and attach GStreamer plugin binaries
   release-assets:
