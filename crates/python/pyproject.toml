@@ -4,9 +4,9 @@ build-backend = "maturin"
 
 [project]
 name = "rtsp-rs"
-version = "0.1.2"
+version = "0.1.3"
 description = "Python bindings for the RTSP server library — publish live encoded video over RTSP from Python."
-readme = "../../README.md"
+readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.8"
 authors = [{ name = "the rtsp-rs authors" }]
@@ -31,6 +31,7 @@ Repository = "https://github.com/marmikshah/rtsp-rs"
 [tool.maturin]
 manifest-path = "Cargo.toml"
 # Include README and licenses in source distribution
-sdist-include = ["../../README.md", "../../LICENSE"]
+# README and LICENSE are copied into crates/python/ in CI before publish (avoids .. in sdist paths)
+sdist-include = ["README.md", "LICENSE"]
 # Python package name when importing (same as [lib] name in Cargo.toml)
 module-name = "rtsp"

@@ -81,6 +81,8 @@ jobs:
       - name: Wait for crates.io index
         run: sleep 10
 
+      - name: Copy README and LICENSE for sdist
+        run: cp README.md LICENSE crates/python/
       - name: Publish rtsp-rs to PyPI
         env:
           TWINE_USERNAME: __token__
