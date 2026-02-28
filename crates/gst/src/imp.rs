@@ -1,16 +1,16 @@
 use std::sync::{LazyLock, Mutex};
 
-use gst::glib;
-use gst::prelude::*;
-use gst::subclass::prelude::*;
-use gst_base::subclass::prelude::*;
+use gstreamer::glib;
+use gstreamer::prelude::*;
+use gstreamer::subclass::prelude::*;
+use gstreamer_base::subclass::prelude::*;
 
 use rtsp::Server;
 
-static CAT: LazyLock<gst::DebugCategory> = LazyLock::new(|| {
-    gst::DebugCategory::new(
+static CAT: LazyLock<gstreamer::DebugCategory> = LazyLock::new(|| {
+    gstreamer::DebugCategory::new(
         "rtspserversink",
-        gst::DebugColorFlags::empty(),
+        gstreamer::DebugColorFlags::empty(),
         Some("RTSP Server Sink"),
     )
 });
@@ -59,7 +59,7 @@ impl Default for RtspServerSink {
 impl ObjectSubclass for RtspServerSink {
     const NAME: &'static str = "GstRtspServerSink";
     type Type = super::RtspServerSink;
-    type ParentType = gst_base::BaseSink;
+    type ParentType = gstreamer_base::BaseSink;
 }
 
 impl ObjectImpl for RtspServerSink {
@@ -124,11 +124,11 @@ impl ObjectImpl for RtspServerSink {
 impl GstObjectImpl for RtspServerSink {}
 
 impl ElementImpl for RtspServerSink {
-    fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
-        static ELEMENT_METADATA: std::sync::OnceLock<gst::subclass::ElementMetadata> =
+    fn metadata() -> Option<&'static gstreamer::subclass::ElementMetadata> {
+        static ELEMENT_METADATA: std::sync::OnceLock<gstreamer::subclass::ElementMetadata> =
             std::sync::OnceLock::new();
         Some(ELEMENT_METADATA.get_or_init(|| {
-            gst::subclass::ElementMetadata::new(
+            gstreamer::subclass::ElementMetadata::new(
                 "RTSP Server Sink",
                 "Sink/Network",
                 "Publishes incoming encoded video as an RTSP stream",
@@ -137,19 +137,19 @@ impl ElementImpl for RtspServerSink {
         }))
     }
 
-    fn pad_templates() -> &'static [gst::PadTemplate] {
-        static PAD_TEMPLATES: std::sync::OnceLock<Vec<gst::PadTemplate>> =
+    fn pad_templates() -> &'static [gstreamer::PadTemplate] {
+        static PAD_TEMPLATES: std::sync::OnceLock<Vec<gstreamer::PadTemplate>> =
             std::sync::OnceLock::new();
         PAD_TEMPLATES.get_or_init(|| {
-            let caps = gst::Caps::builder("video/x-h264")
+            let caps = gstreamer::Caps::builder("video/x-h264")
                 .field("stream-format", "byte-stream")
                 .build();
 
             vec![
-                gst::PadTemplate::new(
+                gstreamer::PadTemplate::new(
                     "sink",
-                    gst::PadDirection::Sink,
-                    gst::PadPresence::Always,
+                    gstreamer::PadDirection::Sink,
+                    gstreamer::PadPresence::Always,
                     &caps,
                 )
                 .unwrap(),
@@ -159,15 +159,15 @@ impl ElementImpl for RtspServerSink {
 }
 
 impl BaseSinkImpl for RtspServerSink {
-    fn start(&self) -> Result<(), gst::ErrorMessage> {
+    fn start(&self) -> Result<(), gstreamer::ErrorMessage> {
         let settings = self.settings.lock().unwrap().clone();
         let bind_addr = format!("{}:{}", settings.address, settings.port);
 
         let mut server = Server::new_with_mount_path(&bind_addr, &settings.mount_path);
 
         server.start().map_err(|e| {
-            gst::error_msg!(
-                gst::ResourceError::OpenWrite,
+            gstreamer::error_msg!(
+                gstreamer::ResourceError::OpenWrite,
                 ["Failed to start RTSP server: {}", e]
             )
         })?;
@@ -178,7 +178,7 @@ impl BaseSinkImpl for RtspServerSink {
             mount_path: mount_path.clone(),
         });
 
-        gst::info!(
+        gstreamer::info!(
             CAT,
             imp = self,
             "RTSP server started on {} mount {}",
@@ -189,18 +189,18 @@ impl BaseSinkImpl for RtspServerSink {
         Ok(())
     }
 
-    fn stop(&self) -> Result<(), gst::ErrorMessage> {
+    fn stop(&self) -> Result<(), gstreamer::ErrorMessage> {
         if let Some(mut state) = self.state.lock().unwrap().take() {
             state.server.stop();
-            gst::info!(CAT, imp = self, "RTSP server stopped");
+            gstreamer::info!(CAT, imp = self, "RTSP server stopped");
         }
         Ok(())
     }
 
-    fn render(&self, buffer: &gst::Buffer) -> Result<gst::FlowSuccess, gst::FlowError> {
+    fn render(&self, buffer: &gstreamer::Buffer) -> Result<gstreamer::FlowSuccess, gstreamer::FlowError> {
         let map = buffer.map_readable().map_err(|_| {
-            gst::error!(CAT, imp = self, "Failed to map buffer readable");
-            gst::FlowError::Error
+            gstreamer::error!(CAT, imp = self, "Failed to map buffer readable");
+            gstreamer::FlowError::Error
         })?;
 
         let ts_increment = buffer
@@ -210,17 +210,17 @@ impl BaseSinkImpl for RtspServerSink {
 
         let state_guard = self.state.lock().unwrap();
         let state = state_guard.as_ref().ok_or_else(|| {
-            gst::error!(CAT, imp = self, "Element not started");
-            gst::FlowError::Error
+            gstreamer::error!(CAT, imp = self, "Element not started");
+            gstreamer::FlowError::Error
         })?;
 
         if let Err(e) = state
             .server
             .send_frame_to(&state.mount_path, map.as_slice(), ts_increment)
         {
-            gst::warning!(CAT, imp = self, "send_frame failed: {}", e);
+            gstreamer::warning!(CAT, imp = self, "send_frame failed: {}", e);
         }
 
-        Ok(gst::FlowSuccess::Ok)
+        Ok(gstreamer::FlowSuccess::Ok)
     }
 }

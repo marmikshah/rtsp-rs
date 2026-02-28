@@ -31,24 +31,24 @@
 
 mod imp;
 
-use gst::glib;
-use gst::prelude::*;
+use gstreamer::glib;
+use gstreamer::prelude::*;
 
 glib::wrapper! {
     pub struct RtspServerSink(ObjectSubclass<imp::RtspServerSink>)
-        @extends gst_base::BaseSink, gst::Element, gst::Object;
+        @extends gstreamer_base::BaseSink, gstreamer::Element, gstreamer::Object;
 }
 
-fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
-    gst::Element::register(
+fn plugin_init(plugin: &gstreamer::Plugin) -> Result<(), glib::BoolError> {
+    gstreamer::Element::register(
         Some(plugin),
         "rtspserversink",
-        gst::Rank::NONE,
+        gstreamer::Rank::NONE,
         RtspServerSink::static_type(),
     )
 }
 
-gst::plugin_define!(
+gstreamer::plugin_define!(
     rtspserversink,
     "Create an RTSP Server and publish encoded packets to it",
     plugin_init,

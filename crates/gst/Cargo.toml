@@ -17,5 +17,5 @@ crate-type = ["cdylib"]
 [dependencies]
 rtsp = { path = "../core" }
 parking_lot = "0.12.5"
-gst = { package = "gstreamer", version = "0.23" }
-gst-base = { package = "gstreamer-base", version = "0.23" }
+gstreamer = "0.23"
+gstreamer-base = "0.23"
