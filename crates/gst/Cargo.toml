@@ -2,6 +2,7 @@
 name = "gst-rtsp-sink"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.92"
 description = "GStreamer sink that publishes media over RTSP"
 readme = "../../README.md"
 license = "MIT"
@@ -16,6 +17,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rtsp = { path = "../core" }
-parking_lot = "0.12.5"
-gstreamer = "0.23"
-gstreamer-base = "0.23"
+parking_lot = "0.12"
+gstreamer = "0.25"
+gstreamer-base = "0.25"

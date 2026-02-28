@@ -2,6 +2,7 @@
 name = "rtsp-python"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.92"
 description = "Python bindings for the RTSP server library"
 readme = "../../README.md"
 license = "MIT"
@@ -16,8 +17,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rtsp = { path = "../core" }
-parking_lot = "0.12.5"
-pyo3 = { version = "0.28.0", features = ["extension-module", "macros"] }
+parking_lot = "0.12"
+pyo3 = { version = "0.28", features = ["extension-module", "macros"] }
 
 [build-dependencies]
 pyo3-build-config = "0.28"

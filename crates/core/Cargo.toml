@@ -2,6 +2,7 @@
 name = "rtsp"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.92"
 description = "RTSP server library for live media streaming"
 readme = "../../README.md"
 license = "MIT"
@@ -12,7 +13,7 @@ categories = ["multimedia", "network-programming"]
 
 [dependencies]
 base64 = "0.22"
-parking_lot = "0.12.5"
+parking_lot = "0.12"
 thiserror = "2"
 tracing = "0.1"
-rand = "0.9"
+rand = "0.10"

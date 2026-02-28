@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 
 /// Generic RTP fixed header builder (RFC 3550 §5.1).
 ///
