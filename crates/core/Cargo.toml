@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+base64 = "0.22"
 parking_lot = "0.12.5"
 thiserror = "2"
 tracing = "0.1"

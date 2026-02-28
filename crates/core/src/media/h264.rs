@@ -1,3 +1,5 @@
+use base64::prelude::{Engine as _, BASE64_STANDARD};
+
 use super::Packetizer;
 use super::rtp::RtpHeader;
 
@@ -41,8 +43,8 @@ const DEFAULT_MTU: usize = 1400;
 /// - `a=fmtp:96 packetization-mode=1`
 /// - `a=control:track1`
 ///
-/// Future: `profile-level-id` and `sprop-parameter-sets` will be added
-/// when SPS/PPS are provided (see Issue #3).
+/// SPS/PPS are auto-captured from the first frame that contains them (e.g. first keyframe);
+/// the fmtp line then includes `profile-level-id` and `sprop-parameter-sets` (RFC 6184 §8.1).
 ///
 /// ## Marker bit
 ///
@@ -52,6 +54,8 @@ const DEFAULT_MTU: usize = 1400;
 pub struct H264Packetizer {
     header: RtpHeader,
     mtu: usize,
+    sps: Option<Vec<u8>>,
+    pps: Option<Vec<u8>>,
 }
 
 impl H264Packetizer {
@@ -60,6 +64,8 @@ impl H264Packetizer {
         Self {
             header: RtpHeader::new(pt, ssrc),
             mtu: DEFAULT_MTU,
+            sps: None,
+            pps: None,
         }
     }
 
@@ -68,7 +74,31 @@ impl H264Packetizer {
         Self {
             header: RtpHeader::with_random_ssrc(pt),
             mtu: DEFAULT_MTU,
+            sps: None,
+            pps: None,
         }
+    }
+
+    /// Derive profile-level-id from SPS NAL (RFC 6184 §8.1): bytes 1–3 are profile_idc, constraint_set, level_idc.
+    fn get_profile_level_id(&self) -> Result<String, String> {
+        let sps = self.sps.as_deref().ok_or("SPS not set")?;
+        if sps.len() < 4 {
+            return Err("SPS too short for profile-level-id".into());
+        }
+        Ok(format!(
+            "{:02x}{:02x}{:02x}",
+            sps[1], sps[2], sps[3]
+        ))
+    }
+
+    fn get_sprop_parameter_sets(&self) -> Result<String, String> {
+        let sps = self.sps.as_deref().ok_or("SPS not set")?;
+        let pps = self.pps.as_deref().ok_or("PPS not set")?;
+        Ok(format!(
+            "{},{}",
+            BASE64_STANDARD.encode(sps),
+            BASE64_STANDARD.encode(pps)
+        ))
     }
 
     /// Packetize a single NAL unit into one or more RTP packets.
@@ -190,6 +220,24 @@ impl Packetizer for H264Packetizer {
         let nal_units = Self::extract_nal_units(encoded_data);
         let mut packets = Vec::new();
 
+        // Auto-capture SPS/PPS from first frame that contains them (e.g. first keyframe).
+        // Only set when not already provided by the user.
+        if self.sps.is_none() || self.pps.is_none() {
+            for nal in &nal_units {
+                if nal.len() < 1 {
+                    continue;
+                }
+                let nal_type = nal[0] & 0x1f;
+                if nal_type == 7 && self.sps.is_none() {
+                    self.sps = Some(nal.clone());
+                    tracing::debug!("H.264 SPS captured from bitstream ({} bytes)", nal.len());
+                } else if nal_type == 8 && self.pps.is_none() {
+                    self.pps = Some(nal.clone());
+                    tracing::debug!("H.264 PPS captured from bitstream ({} bytes)", nal.len());
+                }
+            }
+        }
+
         for (i, nal) in nal_units.iter().enumerate() {
             let is_last = i == nal_units.len() - 1;
             packets.append(&mut self.packetize_nal(nal, is_last));
@@ -229,9 +277,17 @@ impl Packetizer for H264Packetizer {
     /// sequentially and expect this ordering.
     ///
     /// - `a=rtpmap:<pt> H264/90000` — codec name and clock rate
-    /// - `a=fmtp:<pt> packetization-mode=1` — non-interleaved mode (FU-A allowed)
+    /// - `a=fmtp:<pt> packetization-mode=1[;profile-level-id=...][;sprop-parameter-sets=...]` — codec params (RFC 6184 §8.1)
     /// - `a=control:track1` — track control URL for SETUP
     fn sdp_attributes(&self) -> Vec<String> {
+        let mut fmtp = format!("a=fmtp:{} packetization-mode=1", self.header.pt);
+        if let Ok(pl) = self.get_profile_level_id() {
+            fmtp.push_str(&format!(";profile-level-id={}", pl));
+        }
+        if let Ok(sprop) = self.get_sprop_parameter_sets() {
+            fmtp.push_str(&format!(";sprop-parameter-sets={}", sprop));
+        }
+
         vec![
             format!(
                 "a=rtpmap:{} {}/{}",
@@ -239,7 +295,7 @@ impl Packetizer for H264Packetizer {
                 self.codec_name(),
                 self.clock_rate()
             ),
-            format!("a=fmtp:{} packetization-mode=1", self.header.pt),
+            fmtp,
             "a=control:track1".to_string(),
         ]
     }
@@ -372,4 +428,32 @@ mod tests {
         assert_eq!(p.clock_rate(), 90000);
         assert_eq!(p.payload_type(), 96);
     }
+
+    #[test]
+    fn auto_capture_sps_pps_from_first_frame() {
+        // Frame with SPS (NAL 7) and PPS (NAL 8): packetizer captures them for SDP
+        let mut p = H264Packetizer::new(96, 0xAABBCCDD);
+        let sps_nal = vec![0x67, 0x42, 0x00, 0x1e]; // NAL type 7
+        let pps_nal = vec![0x68, 0xce, 0x38, 0x80]; // NAL type 8
+        let frame = [
+            &[0u8, 0, 0, 1][..],
+            sps_nal.as_slice(),
+            &[0, 0, 0, 1][..],
+            pps_nal.as_slice(),
+            &[0, 0, 0, 1, 0x65, 0x88, 0x00][..], // slice
+        ]
+        .concat();
+        p.packetize(&frame, 3000);
+        let attrs = p.sdp_attributes();
+        let fmtp = attrs.iter().find(|a| a.starts_with("a=fmtp:")).expect("fmtp line");
+        assert!(
+            fmtp.contains("profile-level-id="),
+            "SPS auto-captured, profile-level-id in SDP"
+        );
+        assert!(
+            fmtp.contains("sprop-parameter-sets="),
+            "SPS/PPS auto-captured, sprop-parameter-sets in SDP"
+        );
+    }
+
 }

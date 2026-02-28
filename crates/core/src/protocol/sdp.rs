@@ -12,12 +12,13 @@
 //! a=sendonly                                    ← direction (§6)
 //! m=video 0 RTP/AVP 96                          ← media description
 //! a=rtpmap:96 H264/90000                        ← codec/clock rate
-//! a=fmtp:96 packetization-mode=1                ← codec parameters
+//! a=fmtp:96 packetization-mode=1[;profile-level-id=...][;sprop-parameter-sets=...]  ← H.264 params (RFC 6184 §8.1)
 //! a=control:track1                              ← track control URL
 //! ```
 //!
-//! All session/origin fields come from [`ServerConfig`](crate::ServerConfig)
-//! so nothing is hardcoded.
+//! For H.264, when SPS/PPS have been auto-captured from the first keyframe, the fmtp line
+//! also includes `profile-level-id` and `sprop-parameter-sets`. All session/origin fields
+//! come from [`ServerConfig`](crate::ServerConfig); nothing is hardcoded.
 
 use crate::mount::Mount;
 
@@ -109,5 +110,39 @@ mod tests {
 
         assert!(fmtp_idx > m_idx, "media attributes must follow m=video");
         assert!(sdp.ends_with("\r\n"), "SDP must end with CRLF");
+    }
+
+    #[test]
+    fn generates_h264_sdp_with_sps_pps() {
+        // After the mount packetizes a frame containing SPS/PPS, full SDP includes fmtp params.
+        let mount = Mount::new("/stream", Box::new(H264Packetizer::new(96, 0x12345678)));
+        let sps_nal = vec![0x67u8, 0x42, 0x00, 0x1e];
+        let pps_nal = vec![0x68u8, 0xce, 0x38, 0x80];
+        let frame = [
+            &[0u8, 0, 0, 1][..],
+            sps_nal.as_slice(),
+            &[0, 0, 0, 1][..],
+            pps_nal.as_slice(),
+            &[0, 0, 0, 1, 0x65, 0x88, 0x00][..],
+        ]
+        .concat();
+        mount.packetize(&frame, 3000);
+        let sdp = generate_sdp(
+            &mount,
+            "192.168.1.100",
+            "1234567890",
+            "1",
+            "server",
+            "Test Session",
+        );
+        assert!(
+            sdp.contains("profile-level-id="),
+            "full SDP must include profile-level-id after auto-capture"
+        );
+        assert!(
+            sdp.contains("sprop-parameter-sets="),
+            "full SDP must include sprop-parameter-sets after auto-capture"
+        );
+        assert!(sdp.contains("a=fmtp:96 packetization-mode=1;"));
     }
 }
