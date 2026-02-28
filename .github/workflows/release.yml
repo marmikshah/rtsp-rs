@@ -70,7 +70,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install maturin
+      - run: pip install maturin twine
 
       - name: Cargo login (crates.io)
         run: echo "${{ secrets.CRATES_API_KEY }}" | cargo login
@@ -83,11 +83,13 @@ jobs:
 
       - name: Copy README and LICENSE for sdist
         run: cp README.md LICENSE crates/python/
+      - name: Build Python wheel and sdist
+        run: maturin build -m crates/python/Cargo.toml --release
       - name: Publish rtsp-rs to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: maturin publish -m crates/python/Cargo.toml --non-interactive
+        run: twine upload target/wheels/*
 
   # Create GitHub Release and attach GStreamer plugin binaries
   release-assets:

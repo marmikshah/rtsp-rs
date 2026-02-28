@@ -1,6 +1,6 @@
 [package]
 name = "gst-rtsp-sink"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 rust-version = "1.92"
 description = "GStreamer sink that publishes media over RTSP"
