@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rtsp-rs"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python bindings for the RTSP server library — publish live encoded video over RTSP from Python."
 readme = "../../README.md"
 license = { text = "MIT" }

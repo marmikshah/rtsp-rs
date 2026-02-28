@@ -1,7 +1,7 @@
 # rtsp-rs
 
-[![Testing](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-testing.yml/badge.svg?branch=master)](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-testing.yml)
-[![Build](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-build.yml/badge.svg?branch=master)](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-build.yml)
+[![Lint](https://github.com/marmikshah/rtsp-rs/actions/workflows/lint.yml/badge.svg?branch=master)](https://github.com/marmikshah/rtsp-rs/actions/workflows/lint.yml)
+[![Test](https://github.com/marmikshah/rtsp-rs/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/marmikshah/rtsp-rs/actions/workflows/test.yml)
 [![Release](https://github.com/marmikshah/rtsp-rs/actions/workflows/release.yml/badge.svg)](https://github.com/marmikshah/rtsp-rs/actions/workflows/release.yml)
 
 A Rust library for publishing live encoded video over RTSP. Push frames and play the stream with any standard client (VLC, ffplay, GStreamer).
@@ -28,8 +28,8 @@ Some of the tests, examples, and documentation in this repo were generated or as
 
 ```
 crates/
-├── core/        # rtsp         — core library
-├── python/      # rtsp-python  — PyO3 bindings
+├── core/        # rtsp-rs (crates.io) — core library, use rtsp:: in Rust
+├── python/      # rtsp-python  — PyO3 bindings → PyPI package rtsp-rs
 └── gst/         # gst-rtsp-sink — GStreamer sink plugin
 
 examples/
@@ -39,6 +39,8 @@ examples/
 ## Quick start
 
 ### Rust
+
+Add to `Cargo.toml`: `rtsp = { package = "rtsp-rs", version = "0.1" }` (the crate is published as **rtsp-rs** on crates.io; the library is still `rtsp` in code).
 
 ```rust
 use rtsp::Server;
@@ -129,10 +131,10 @@ vlc rtsp://localhost:8554/stream
 
 ## Building
 
-Requires Rust 1.85+. The GStreamer plugin requires `libunwind-dev` and `libgstreamer1.0-dev` (Ubuntu/Debian: `sudo apt install libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`).
+Requires Rust 1.92+ (latest stable). The GStreamer plugin requires `libunwind-dev` and `libgstreamer1.0-dev` (Ubuntu/Debian: `sudo apt install libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`).
 
 ```bash
-cargo build -p rtsp                # Core library
+cargo build -p rtsp-rs             # Core library
 cargo build -p gst-rtsp-sink       # GStreamer plugin
 cargo build -p rtsp-python         # Python bindings (needs maturin)
 cargo test  --workspace            # All tests

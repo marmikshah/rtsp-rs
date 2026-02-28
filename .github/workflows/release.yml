@@ -7,7 +7,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 env:
   CARGO_TERM_COLOR: always
@@ -69,40 +69,17 @@ jobs:
       - name: Install Python and maturin
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: pip install maturin
-
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Set version and release deps
-        run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          # Set version in all Cargo.toml and pyproject.toml
-          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/core/Cargo.toml
-          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/python/Cargo.toml
-          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/gst/Cargo.toml
-          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/python/pyproject.toml
-          # Use crates.io dependency for publish (path is only for local dev). Core crate is rtsp-rs on crates.io.
-          sed -i 's|rtsp = { path = "../core", package = "rtsp-rs" }|rtsp = { package = "rtsp-rs", version = "'"$VERSION"'" }|' crates/python/Cargo.toml
-          sed -i 's|rtsp = { path = "../core", package = "rtsp-rs" }|rtsp = { package = "rtsp-rs", version = "'"$VERSION"'" }|' crates/gst/Cargo.toml
-          echo "Publishing version: $VERSION"
 
       - name: Cargo login (crates.io)
         run: echo "${{ secrets.CRATES_API_KEY }}" | cargo login
 
-      - name: Publish rtsp-rs (core)
+      - name: Publish rtsp-rs (core) to crates.io
         run: cargo publish -p rtsp-rs --allow-dirty
 
       - name: Wait for crates.io index
         run: sleep 10
-
-      - name: Publish rtsp-python (crates.io)
-        run: cargo publish -p rtsp-python --allow-dirty
-
-      - name: Publish gst-rtsp-sink (crates.io)
-        run: cargo publish -p gst-rtsp-sink --allow-dirty
 
       - name: Publish rtsp-rs to PyPI
         env:
