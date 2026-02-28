@@ -14,11 +14,16 @@ use std::fmt;
 /// - **Server**: [`NotStarted`](Self::NotStarted),
 ///   [`AlreadyRunning`](Self::AlreadyRunning).
 /// - **Mount**: [`MountNotFound`](Self::MountNotFound).
+/// - **Server**: [`InvalidBindAddress`](Self::InvalidBindAddress) — bind address must have an explicit non-zero port.
 #[derive(Debug, thiserror::Error)]
 pub enum RtspError {
     /// Underlying I/O or socket error.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    /// Bind address must be `host:port` with an explicit non-zero port (port 0 is not allowed).
+    #[error("invalid bind address: {0}")]
+    InvalidBindAddress(String),
 
     /// No session with the given ID exists in the [`SessionManager`](crate::session::SessionManager).
     #[error("session not found: {0}")]

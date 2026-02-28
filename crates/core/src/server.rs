@@ -1,4 +1,4 @@
-use std::net::TcpListener;
+use std::net::{SocketAddr, TcpListener};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -78,6 +78,9 @@ pub struct Server {
 
 impl Server {
     /// Create a server with a default H.264 mount at `/stream`.
+    ///
+    /// `bind_addr` must be `host:port` with an explicit non-zero port (e.g. `127.0.0.1:8554`).
+    /// Port 0 is not allowed; validation happens in [`start`](Self::start).
     pub fn new(bind_addr: &str) -> Self {
         Self::with_config(bind_addr, ServerConfig::default())
     }
@@ -137,6 +140,19 @@ impl Server {
     pub fn start(&mut self) -> Result<()> {
         if self.running.load(Ordering::SeqCst) {
             return Err(RtspError::AlreadyRunning);
+        }
+
+        let addr: SocketAddr = self
+            .bind_addr
+            .parse()
+            .map_err(|_| RtspError::InvalidBindAddress(format!(
+                "expected host:port with explicit port, got {:?}",
+                self.bind_addr
+            )))?;
+        if addr.port() == 0 {
+            return Err(RtspError::InvalidBindAddress(
+                "port must be explicit (non-zero)".to_string(),
+            ));
         }
 
         self.udp = Some(UdpTransport::bind()?);
@@ -311,4 +327,37 @@ pub struct Viewer {
     pub uri: String,
     pub client_addr: String,
     pub client_rtp_port: u16,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn start_rejects_port_zero() {
+        let mut server = Server::new("127.0.0.1:0");
+        let err = server.start().unwrap_err();
+        match &err {
+            RtspError::InvalidBindAddress(msg) => assert!(msg.contains("non-zero"), "{}", msg),
+            _ => panic!("expected InvalidBindAddress, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn start_rejects_missing_port() {
+        let mut server = Server::new("127.0.0.1");
+        let err = server.start().unwrap_err();
+        match &err {
+            RtspError::InvalidBindAddress(_) => {}
+            _ => panic!("expected InvalidBindAddress, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn start_accepts_explicit_port() {
+        let mut server = Server::new("127.0.0.1:18555");
+        server.start().expect("explicit port should be accepted");
+        assert!(server.is_running());
+        server.stop();
+    }
 }
