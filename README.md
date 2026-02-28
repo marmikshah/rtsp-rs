@@ -129,7 +129,7 @@ vlc rtsp://localhost:8554/stream
 
 ## Building
 
-Requires Rust 1.85+. The GStreamer plugin requires `libgstreamer1.0-dev`.
+Requires Rust 1.85+. The GStreamer plugin requires `libunwind-dev` and `libgstreamer1.0-dev` (Ubuntu/Debian: `sudo apt install libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`).
 
 ```bash
 cargo build -p rtsp                # Core library
