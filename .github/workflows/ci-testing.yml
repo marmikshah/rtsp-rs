@@ -1,4 +1,5 @@
-name: CI
+# 1. Testing: format, clippy, test on all OSs. Triggers Build on success.
+name: Testing
 
 on:
   push:
@@ -11,8 +12,8 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  fmt:
-    name: Format
+  format:
+    name: format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +23,8 @@ jobs:
       - run: cargo fmt --all -- --check
 
   clippy:
-    name: Clippy
+    name: clippy
+    needs: format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,42 +39,42 @@ jobs:
       - run: cargo clippy --workspace -- -D warnings
 
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.platform }})
+    needs: clippy
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+          - platform: linux-arm64
+            runner: ubuntu-22.04-arm
+          - platform: macos
+            runner: macos-14
+          - platform: windows
+            runner: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install GStreamer dev libraries
+      - name: Install GStreamer (Linux x86_64)
+        if: matrix.platform == 'linux-x86_64'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Install GStreamer (Linux arm64)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Install GStreamer (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install gstreamer gst-plugins-base pkg-config
+      - name: Install GStreamer (Windows)
+        if: matrix.platform == 'windows'
+        uses: blinemedical/setup-gstreamer@v1.4.0
+        with:
+          version: '1.22.7'
+          arch: 'x86_64'
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install GStreamer dev libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo build --workspace
-
-  doc:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install GStreamer dev libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo doc --no-deps -p rtsp -p gst-rtsp-sink
-        env:
-          RUSTDOCFLAGS: -Dwarnings

@@ -3,8 +3,12 @@ name = "gst-rtsp-sink"
 version = "0.1.0"
 edition = "2024"
 description = "GStreamer sink that publishes media over RTSP"
-license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+license = "MIT"
 repository = "https://github.com/marmikshah/rtsp-rs"
+homepage = "https://github.com/marmikshah/rtsp-rs"
+keywords = ["gstreamer", "rtsp", "sink", "streaming", "video"]
+categories = ["multimedia", "network-programming"]
 
 [lib]
 name = "gstrtspserversink"

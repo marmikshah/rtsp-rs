@@ -1,5 +1,9 @@
 # rtsp-rs
 
+[![Testing](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-testing.yml/badge.svg?branch=master)](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-testing.yml)
+[![Build](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-build.yml/badge.svg?branch=master)](https://github.com/marmikshah/rtsp-rs/actions/workflows/ci-build.yml)
+[![Release](https://github.com/marmikshah/rtsp-rs/actions/workflows/release.yml/badge.svg)](https://github.com/marmikshah/rtsp-rs/actions/workflows/release.yml)
+
 A Rust library for publishing live encoded video over RTSP. Push frames and play the stream with any standard client (VLC, ffplay, GStreamer).
 
 Usable from **Rust**, **Python**, or **GStreamer**.

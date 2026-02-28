@@ -1,0 +1,170 @@
+# Release to crates.io and PyPI when a tag vX.Y.Z is pushed.
+# Runs build-test on all platforms first; publish and release assets only if all pass.
+# Secrets (CRATES_API_KEY, PYPI_API_TOKEN) are in the GitHub environment "Release".
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build and test on all platforms — release proceeds only if this passes
+  build-test:
+    name: Build & Test (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+            artifact_name: libgstrtspserversink.so
+          - platform: linux-arm64
+            runner: ubuntu-22.04-arm
+            artifact_name: libgstrtspserversink.so
+          - platform: macos
+            runner: macos-14
+            artifact_name: libgstrtspserversink.dylib
+          - platform: windows
+            runner: windows-latest
+            artifact_name: gstrtspserversink.dll
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GStreamer (Linux x86_64)
+        if: matrix.platform == 'linux-x86_64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Install GStreamer (Linux arm64)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Install GStreamer (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install gstreamer gst-plugins-base pkg-config
+      - name: Install GStreamer (Windows)
+        if: matrix.platform == 'windows'
+        uses: blinemedical/setup-gstreamer@v1.4.0
+        with:
+          version: '1.22.7'
+          arch: 'x86_64'
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --workspace --release
+      - name: Test
+        run: cargo test --workspace
+      - name: Upload GStreamer plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: gst-rtsp-sink-${{ matrix.platform }}
+          path: target/release/${{ matrix.artifact_name }}
+
+  publish:
+    name: Publish to crates.io and PyPI
+    runs-on: ubuntu-latest
+    needs: build-test
+    environment: Release
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install GStreamer (for gst-rtsp-sink)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
+      - name: Install Python and maturin
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install maturin
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Set version and release deps
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          # Set version in all Cargo.toml and pyproject.toml
+          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/core/Cargo.toml
+          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/python/Cargo.toml
+          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/gst/Cargo.toml
+          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' crates/python/pyproject.toml
+          # Use crates.io dependency for publish (path is only for local dev)
+          sed -i 's|rtsp = { path = "../core" }|rtsp = "'"$VERSION"'"|' crates/python/Cargo.toml
+          sed -i 's|rtsp = { path = "../core" }|rtsp = "'"$VERSION"'"|' crates/gst/Cargo.toml
+          echo "Publishing version: $VERSION"
+
+      - name: Cargo login (crates.io)
+        run: echo "${{ secrets.CRATES_API_KEY }}" | cargo login
+
+      - name: Publish rtsp (core)
+        run: cargo publish -p rtsp --allow-dirty
+
+      - name: Wait for crates.io index
+        run: sleep 10
+
+      - name: Publish rtsp-python (crates.io)
+        run: cargo publish -p rtsp-python --allow-dirty
+
+      - name: Publish gst-rtsp-sink (crates.io)
+        run: cargo publish -p gst-rtsp-sink --allow-dirty
+
+      - name: Publish rtsp-rs to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: maturin publish -m crates/python/Cargo.toml --no-interaction
+
+  # Create GitHub Release and attach GStreamer plugin binaries
+  release-assets:
+    name: Create release with GStreamer plugins
+    runs-on: ubuntu-latest
+    needs: build-test
+    environment: Release
+    permissions:
+      contents: write
+    steps:
+      - name: Download all plugin artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: gst-rtsp-sink-*
+          path: plugins
+          merge-multiple: false
+
+      - name: Rename plugins for release
+        run: |
+          mkdir -p release-assets
+          for dir in plugins/*/; do
+            platform=$(basename "$dir" | sed 's/^gst-rtsp-sink-//')
+            file=$(find "$dir" -type f | head -1)
+            ext="${file##*.}"
+            base=$(basename "$file" ".$ext")
+            cp "$file" "release-assets/${base}-${platform}.${ext}"
+          done
+          ls -la release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

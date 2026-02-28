@@ -1,0 +1,66 @@
+# 2. Build: runs after Testing succeeds. Builds on all OSs, uploads GStreamer plugin artifacts.
+name: Build
+
+on:
+  workflow_run:
+    workflows: [Testing]
+    types: [completed]
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  build:
+    if: github.event.workflow_run.conclusion == 'success'
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+            artifact_name: libgstrtspserversink.so
+          - platform: linux-arm64
+            runner: ubuntu-22.04-arm
+            artifact_name: libgstrtspserversink.so
+          - platform: macos
+            runner: macos-14
+            artifact_name: libgstrtspserversink.dylib
+          - platform: windows
+            runner: windows-latest
+            artifact_name: gstrtspserversink.dll
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GStreamer (Linux x86_64)
+        if: matrix.platform == 'linux-x86_64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Install GStreamer (Linux arm64)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Install GStreamer (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install gstreamer gst-plugins-base pkg-config
+      - name: Install GStreamer (Windows)
+        if: matrix.platform == 'windows'
+        uses: blinemedical/setup-gstreamer@v1.4.0
+        with:
+          version: '1.22.7'
+          arch: 'x86_64'
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --workspace --release
+      - name: Upload GStreamer plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: gst-rtsp-sink-${{ matrix.platform }}
+          path: target/release/${{ matrix.artifact_name }}
