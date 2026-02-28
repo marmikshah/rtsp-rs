@@ -1,8 +1,22 @@
 # rtsp-rs
 
-A Rust library for publishing live encoded video over RTSP. Push H.264 frames and any standard client (VLC, ffplay, GStreamer) can play the stream.
+A Rust library for publishing live encoded video over RTSP. Push frames and play the stream with any standard client (VLC, ffplay, GStreamer).
 
 Usable from **Rust**, **Python**, **GStreamer**, or as a **standalone CLI**.
+
+---
+
+<div align="center">
+
+**⚠️ Please read before using**
+
+</div>
+
+This is a **personal, hobby project** I built to learn about RTP, RTSP, and streaming. I’m actively evolving it and use it only for my own projects. I have no plans to use or support it in production right now, though I might rely on it there someday if the need arises — so treat it as **use at your own risk**.
+
+Some of the tests, examples, and documentation in this repo were generated or assisted by AI tools. Treat them as reference material rather than guarantees of correctness.
+
+---
 
 > **Status:** Pre-release (`v0.x`). API may change between versions.
 
@@ -118,7 +132,7 @@ cargo run -p rtsp-cli -- --bind 0.0.0.0:8554
 
 ## Building
 
-Requires Rust 1.85+. GStreamer plugin requires `libgstreamer1.0-dev`.
+Requires Rust 1.85+. The GStreamer plugin requires `libgstreamer1.0-dev`.
 
 ```bash
 cargo build -p rtsp                # Core library
@@ -128,17 +142,3 @@ cargo build -p rtsp-cli            # CLI binary
 cargo test  --workspace            # All tests
 cargo clippy --workspace           # Lint
 ```
-
-## Roadmap
-
-| Version    | Focus       | Key features                                                                            |
-| ---------- | ----------- | --------------------------------------------------------------------------------------- |
-| **v1.0.0** | H.264 video | Full H.264 support, RFC-compliant SDP/RTP, proper `tracing` logging, SPS/PPS in SDP, CI |
-| **v1.1.0** | Signals     | Client connect/disconnect callbacks, session timeout enforcement                        |
-| **v1.2.0** | Audio       | Audio support for one codec (AAC or Opus), multi-track SDP                              |
-| **v1.3.0** | More codecs | H.265 packetizer (RFC 7798), MJPEG packetizer (RFC 2435)                                |
-| **v2.0.0** | Transport   | Interleaved TCP transport, RTCP sender reports, async option                            |
-
-## License
-
-MIT
