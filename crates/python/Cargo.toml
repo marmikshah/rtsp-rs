@@ -1,15 +1,17 @@
 [package]
 name = "rtsp-python"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 rust-version = "1.92"
 description = "Python bindings for the RTSP server library"
-readme = "../../README.md"
+readme = "README.md"
 license = "MIT"
 repository = "https://github.com/marmikshah/rtsp-rs"
 homepage = "https://github.com/marmikshah/rtsp-rs"
 keywords = ["rtsp", "rtp", "streaming", "video", "python"]
 categories = ["multimedia", "network-programming", "api-bindings"]
+# Ensure README and LICENSE are in the crate package (and thus in the PyPI sdist)
+include = ["src/**", "Cargo.toml", "pyproject.toml", "README.md", "LICENSE"]
 
 [lib]
 name = "rtsp"
