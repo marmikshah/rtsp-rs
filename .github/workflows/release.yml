@@ -69,10 +69,16 @@ jobs:
         run: cp README.md LICENSE crates/python/
       - name: Build wheel (and sdist on Linux Py3.12 only)
         run: |
-          maturin build -m crates/python/Cargo.toml --release
+          if [ "${{ matrix.runner }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then
+            maturin build -m crates/python/Cargo.toml --release --sdist
+          else
+            maturin build -m crates/python/Cargo.toml --release
+          fi
           mkdir -p dist
           cp target/wheels/*.whl dist/
-          if [ "${{ matrix.runner }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then cp target/wheels/*.tar.gz dist/; fi
+          if [ "${{ matrix.runner }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then
+            for f in target/wheels/*.tar.gz; do [ -f "$f" ] && cp "$f" dist/ && break; done
+          fi
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
