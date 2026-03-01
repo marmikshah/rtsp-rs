@@ -45,10 +45,44 @@ jobs:
           name: gst-rtsp-sink-${{ matrix.platform }}
           path: target/release/${{ matrix.artifact_name }}
 
+  build-wheels:
+    name: Wheel (${{ matrix.runner }} Py${{ matrix.python-version }})
+    runs-on: ${{ matrix.runner }}
+    needs: build-test
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install maturin
+      - uses: Swatinem/rust-cache@v2
+      - name: Copy README and LICENSE for sdist
+        run: cp README.md LICENSE crates/python/
+      - name: Build wheel (and sdist on Linux Py3.12 only)
+        run: |
+          maturin build -m crates/python/Cargo.toml --release
+          mkdir -p dist
+          cp target/wheels/*.whl dist/
+          if [ "${{ matrix.runner }}" = "ubuntu-latest" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then cp target/wheels/*.tar.gz dist/; fi
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.runner }}-py${{ matrix.python-version }}
+          path: dist/
+
   publish:
     name: Publish to crates.io and PyPI
     runs-on: ubuntu-latest
-    needs: build-test
+    needs: [build-test, build-wheels]
     environment: Release
     permissions:
       contents: read
@@ -60,17 +94,10 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Install GStreamer (for gst-rtsp-sink)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-
-      - name: Install Python and maturin
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install maturin twine
+      - run: pip install twine
 
       - name: Cargo login (crates.io)
         run: echo "${{ secrets.CRATES_API_KEY }}" | cargo login
@@ -81,15 +108,17 @@ jobs:
       - name: Wait for crates.io index
         run: sleep 10
 
-      - name: Copy README and LICENSE for sdist
-        run: cp README.md LICENSE crates/python/
-      - name: Build Python wheel and sdist
-        run: maturin build -m crates/python/Cargo.toml --release
+      - name: Download Python wheels and sdist
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
       - name: Publish rtsp-rs to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload target/wheels/*
+        run: twine upload dist/*
 
   # Create GitHub Release and attach GStreamer plugin binaries
   release-assets:

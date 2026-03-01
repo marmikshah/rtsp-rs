@@ -1,6 +1,6 @@
 [package]
 name = "rtsp-rs"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 rust-version = "1.92"
 description = "RTSP server library for live media streaming"
